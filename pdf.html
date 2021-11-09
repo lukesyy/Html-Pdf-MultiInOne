@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<style>
+		#pop{
+			position: fixed;
+			width: 1904px;
+			left: 100%;
+		}
+	</style>
+	<body>
+		<div id="pop"></div>
+	</body>
+	<script src="./build/pdf.js"></script>
+	<script src="./build/pdf.worker.js"></script>
+	<script src="./build/jsPdf.debug.js"></script>
+	<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+	<script>
+		///pdfUrl:pdf地址;
+		///id:只是为了将canvas做个标记(一个pdf分解成多张canvas图片,canvasid="id-页码")，区分不同pdf,后面可以根据id找到对应的pdf,
+		let pdfUrlArr = [
+		'https://lawkehyt.oss-cn-beijing.aliyuncs.com/%E5%BC%A0%E5%96%9C%E4%B9%90_eb5e6.pdf',
+		'https://lawkehyt.oss-cn-beijing.aliyuncs.com/%E6%9C%B1%E4%BA%91%E4%B8%AD_bbefa.pdf', 
+		'https://lawkehyt.oss-cn-beijing.aliyuncs.com/%E9%AB%98%E9%B9%8F%E9%A3%9E_b4bce.pdf',
+		]
+		let pageNum_all = 0
+		let PromiseArr = []
+		let PagesAll = 0
+		let PagesAllCope = 0
+		let callbackNum = 0
+		let myid = 0
+		let PromiseRes = []
+		// let res = await Promise.all(PromiseArr)
+		async function aa() {
+			pdfUrlArr.forEach(item => {
+				PromiseArr.push(PDFJS.getDocument(item))
+			})
+			PromiseRes = await Promise.all(PromiseArr) //所有pdf的Promise
+			PromiseRes.forEach((item, index) => {
+				PagesAll += item.pdfInfo.numPages //计算总页数
+			})
+			PagesAllCope = PagesAll
+			addPdf()
+		}
+		aa()
+
+		function addPdf() {
+			if (myid < PromiseRes.length) {
+				loadPDF(PromiseRes[myid], PagesAllCope--)
+				++myid
+				addPdf()
+			}
+		}
+		function loadPDF(pdf, id) {
+			//用 promise 获取页面
+			var canvasid = ''
+			var idTemplate = 'pdf_' + id + '-'
+			var pageNum = pdf.numPages
+			pageNum_all += pageNum
+			//根据页码创建画布
+			createSeriesCanvas(pageNum, idTemplate)
+			//将pdf渲染到画布上去
+			for (var i = 1; i <= pageNum; i++) {
+				canvasid = idTemplate + i
+				renderPDF(pdf, i, canvasid)
+			}
+		}
+		//创建和pdf页数等同的canvas数
+		function createSeriesCanvas(num, template) {
+			var id = ''
+			for (var j = 1; j <= num; j++) {
+				id = template + j
+				createPdfContainer(id, 'pdfClass')
+			}
+			// $("#container").append("<a href='javaScript:closePDF()' class='closeP'>点击收起</a>");
+		}
+		//创建
+		function createPdfContainer(id, className) {
+			var pdfContainer = document.getElementById('pop')
+			var canvasNew = document.createElement('canvas')
+			canvasNew.id = id
+			canvasNew.className = className
+			pdfContainer.appendChild(canvasNew)
+		}
+		//渲染pdf
+		//建议给定pdf宽度
+		function renderPDF(pdf, i, id) {
+			pdf.getPage(i).then(function (page) {
+				var scale = 1.9
+				var viewport = page.getViewport(scale)
+				//
+				//  准备用于渲染的 canvas 元素
+				//
+				var wrapper = document.getElementById('pop')
+				var canvas = document.getElementById(id)
+				var context = canvas.getContext('2d')
+				canvas.height = viewport.height
+				canvas.width = viewport.width
+				canvas.style.width = '100%'
+				canvas.style.height = '100%'
+				wrapper.style.width = Math.floor(viewport.width / scale) + 'pt'
+				wrapper.style.height = Math.floor(viewport.height / scale) + 'pt'
+				//
+				// 将 PDF 页面渲染到 canvas 上下文中
+				//
+				var renderContext = {
+					canvasContext: context,
+					viewport: viewport
+				}
+				//page.render(renderContext);
+				// Step 1：store a refer to the renderer
+				var pageRendering = page.render(renderContext)
+				//步骤：钩入pdf渲染完成事件
+				var completeCallback = pageRendering._internalRenderTask.callback
+				pageRendering._internalRenderTask.callback = function (error) {
+					callbackNum++
+					if (callbackNum >= PagesAll) {
+						createPDF()
+					}
+				}
+			})
+		}
+		function createPDF() {
+			if ($('#pop>canvas').length <= 0) {
+				Mozlite.alert('请选择打印文档！')
+				return
+			}
+			var doc = new jsPDF('', 'pt', 'a4')
+			var pop = document.getElementById('pop')
+			$('#pop>canvas').each((index, canvas) => {
+				if (index > 0) doc.addPage() //添加页
+				//a4纸的尺寸[595.28,841.89]，html页面生成的canvas在pdf中图片的宽高
+				var contentWidth = canvas.width
+				var contentHeight = canvas.height
+				var imgWidth = 595.28
+				var imgHeight = (592.28 / contentWidth) * contentHeight
+				var canvas_1Url = canvas.toDataURL('image/JPEG')
+				doc.addImage(canvas_1Url, 'JPEG', 0, 0, imgWidth, imgHeight)
+			})
+			var outputstr = doc.output('datauristring')
+			doc.save('待打印文件.pdf')
+			document.getElementById('pop').innerHTML=''
+		}
+	</script>
+</html>
