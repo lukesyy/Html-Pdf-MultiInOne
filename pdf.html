@@ -22,8 +22,7 @@
 	<script src="./build/jsPdf.debug.js"></script>
 	<script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
 	<script>
-		///pdfUrl:pdf地址;
-		///id:只是为了将canvas做个标记(一个pdf分解成多张canvas图片,canvasid="id-页码")，区分不同pdf,后面可以根据id找到对应的pdf,
+		//  ！！！！！！把你的pdf地址们 放到这个数组中就不用管了！！！！！！！！！！！！！！！
 		let pdfUrlArr = [
 		'https://lawkehyt.oss-cn-beijing.aliyuncs.com/%E5%BC%A0%E5%96%9C%E4%B9%90_eb5e6.pdf',
 		'https://lawkehyt.oss-cn-beijing.aliyuncs.com/%E6%9C%B1%E4%BA%91%E4%B8%AD_bbefa.pdf', 
@@ -92,7 +91,7 @@
 		//建议给定pdf宽度
 		function renderPDF(pdf, i, id) {
 			pdf.getPage(i).then(function (page) {
-				var scale = 1.9
+				var scale = 1.9 //调节他可以改变清晰度 
 				var viewport = page.getViewport(scale)
 				//
 				//  准备用于渲染的 canvas 元素
